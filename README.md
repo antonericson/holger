@@ -1,4 +1,4 @@
-# Holger
+# 🐷Holger🐷
 Discord Meme Leaderboard Bot
 
 ## Dev setup
