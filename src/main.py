@@ -6,9 +6,10 @@ import os
 import discord
 from dateutil.relativedelta import relativedelta
 from pymongo import MongoClient
+import jsonpickle
 
-AUTH_TOKEN = int(os.environ["AUTH_TOKEN"])
-CHANNEL_ID = os.environ["MEME_CHANNEL_ID"]
+AUTH_TOKEN = os.environ["AUTH_TOKEN"]
+CHANNEL_ID = int(os.environ["MEME_CHANNEL_ID"])
 if not (AUTH_TOKEN and CHANNEL_ID):
     import config
     AUTH_TOKEN = config.AUTH_TOKEN
@@ -30,7 +31,6 @@ async def save_leaderboard_data(number_of_days: int, channel):
         # Read posts from last day ish 00:00-00:00
         start_time = (datetime.datetime.now() - datetime.timedelta(days=i)) - datetime.timedelta(days=1)
         date_entry = str(datetime.datetime.now() - datetime.timedelta(days=i))[:10].replace('-', '')
-        print(date_entry)
         messages = [
             message async for message in channel.history(after=start_time, limit=None)
         ]
@@ -88,19 +88,19 @@ async def save_leaderboard_data(number_of_days: int, channel):
                 meme = meme_message.embeds[0]
                 meme_type = "embed"
 
-            formatted_meme_leaderboard["leaderboard"][meme_message.id] = {
+            formatted_meme_leaderboard["leaderboard"][meme_message.id] = jsonpickle.encode({
                 "mention": meme_message.author.mention,
                 "reactions": nr_of_reactions,
                 "meme": meme,
                 "memeType": meme_type,
                 "reference": meme_message
-            }
+            })
 
         top_memes_collection.insert_one(formatted_meme_leaderboard)
-        user_stats_collection.insert_one({
+        user_stats_collection.insert_one(jsonpickle.encode({
             "day": date_entry,
             "user_stats": user_stats
-        })
+        }))
 
 def build_strings(meme_leaderboard, user_stats):
 
