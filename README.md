@@ -1,5 +1,10 @@
-# Holger
-Discord Meme Leaderboard Bot
+# 🐷Holger - Discord Meme Leaderboard Bot🐷
+A discord bot that sends weekly, monthly, and yearly leaderboards in your Discord server's meme channel.🥇
+
+Leaderboard currently includes:
+- Top memes 🐸 (Memes with the most number of reactions)
+- Top meme posters ✉️ (# of images, videos, and gifs posted)
+- Top meme enjoyers 🤣 (# of reactions made to memes posted by other people)
 
 ## Dev setup
 
