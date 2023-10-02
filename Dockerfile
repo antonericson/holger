@@ -10,6 +10,6 @@ RUN apt-get update && apt-get install -y python3 python3-pip cron
 RUN pip install -r requirements.txt
 RUN crontab /etc/cron.d/crontab
 
-CMD ["crond", "-f"]
+CMD ["cron", "-f"]
 
 EXPOSE 27017
