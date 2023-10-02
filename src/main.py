@@ -7,7 +7,7 @@ import discord
 from dateutil.relativedelta import relativedelta
 from pymongo import MongoClient
 
-AUTH_TOKEN = os.environ["AUTH_TOKEN"]
+AUTH_TOKEN = int(os.environ["AUTH_TOKEN"])
 CHANNEL_ID = os.environ["MEME_CHANNEL_ID"]
 if not (AUTH_TOKEN and CHANNEL_ID):
     import config
@@ -80,7 +80,7 @@ async def save_leaderboard_data(number_of_days: int, channel):
             "day": date_entry,
             "leaderboard": {}
         }
-        for meme_message, nr_of_reactions in meme_leaderboard.items():
+        for meme_message, nr_of_reactions in meme_leaderboard:
             if meme_message.attachments != []:
                 meme = await meme_message.attachments[0].to_file()
                 meme_type = "attachment"
@@ -88,15 +88,13 @@ async def save_leaderboard_data(number_of_days: int, channel):
                 meme = meme_message.embeds[0]
                 meme_type = "embed"
 
-            formatted_meme_leaderboard["leaderboard"][meme_message.id](
-                {
-                    "mention": meme_message.author.mention,
-                    "reactions": nr_of_reactions,
-                    "meme": meme,
-                    "memeType": meme_type,
-                    "reference": meme_message
-                }
-            )
+            formatted_meme_leaderboard["leaderboard"][meme_message.id] = {
+                "mention": meme_message.author.mention,
+                "reactions": nr_of_reactions,
+                "meme": meme,
+                "memeType": meme_type,
+                "reference": meme_message
+            }
 
         top_memes_collection.insert_one(formatted_meme_leaderboard)
         user_stats_collection.insert_one({
