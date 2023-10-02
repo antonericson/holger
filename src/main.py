@@ -1,12 +1,18 @@
 # pylint: disable=missing-module-docstring, missing-function-docstring, too-many-locals, too-many-branches, too-many-statements, line-too-long
 import datetime
 import sys
+import os
 
 import discord
 from dateutil.relativedelta import relativedelta
 from pymongo import MongoClient
 
-import config
+AUTH_TOKEN = os.environ("AUTH_TOKEN")
+CHANNEL_ID = os.environ("MEME_CHANNEL_ID")
+if not (AUTH_TOKEN and CHANNEL_ID):
+    import config
+    AUTH_TOKEN = config.AUTH_TOKEN
+    CHANNEL_ID = config.MEME_CHANNEL_ID
 
 discord_intents = discord.Intents.default()
 discord_client = discord.Client(intents=discord_intents)
@@ -69,12 +75,12 @@ async def save_leaderboard_data(number_of_days: int, channel):
                     "reactions_recieved": reactions
                 }
             meme_leaderboard[message] = reactions
-        sorted(meme_leaderboard.items(), key=lambda x:x[1])
+        meme_leaderboard = sorted(meme_leaderboard.items(), key=lambda x:x[1])
         formatted_meme_leaderboard = {
             "day": date_entry,
             "leaderboard": {}
         }
-        for meme_message, nr_of_reactions in meme_leaderboard:
+        for meme_message, nr_of_reactions in meme_leaderboard.items():
             if meme_message.attachments != []:
                 meme = await meme_message.attachments[0].to_file()
                 meme_type = "attachment"
@@ -82,12 +88,13 @@ async def save_leaderboard_data(number_of_days: int, channel):
                 meme = meme_message.embeds[0]
                 meme_type = "embed"
 
-            formatted_meme_leaderboard["leaderboard"][meme_message](
+            formatted_meme_leaderboard["leaderboard"][meme_message.id](
                 {
                     "mention": meme_message.author.mention,
                     "reactions": nr_of_reactions,
                     "meme": meme,
                     "memeType": meme_type,
+                    "reference": meme_message
                 }
             )
 
@@ -155,25 +162,25 @@ def build_strings(meme_leaderboard, user_stats):
             "top_reactions": top_reactor_string,
         }
 
-async def send_top_meme(channel, meme_ref, meme_data, text_content):
+async def send_top_meme(channel, meme_data, text_content):
     if meme_data["memeType"] == "attachment":
         await channel.send(
             content=text_content,
             file=meme_data["meme"],
-            reference=meme_ref,
+            reference=meme_data["reference"],
         )
     else:
         await channel.send(
             content=text_content,
             embed=meme_data["meme"],
-            reference=meme_ref,
+            reference=meme_data["reference"],
         )
 
 @discord_client.event
 async def on_ready():
     print("running")
     channel = discord_client.get_channel(
-        config.MEME_CHANNEL_ID
+        CHANNEL_ID
     )  # MEMES CHANNEL IN CRINGE GANG
     if sys.argv[1] == "day":
         await save_leaderboard_data(1, channel)
@@ -205,9 +212,9 @@ async def on_ready():
         print(strings)
     else:
         await channel.send(content=strings["announcement"])
-        for meme_ref, meme_data in meme_leaderboards[:3]:
+        for meme_data in meme_leaderboards[:3]:
             placement = 0
-            await send_top_meme(channel, meme_ref, meme_data, strings["placements"][placement])
+            await send_top_meme(channel, meme_data, strings["placements"][placement])
             placement += 1
 
         await channel.send(content=strings["top_posters"])
@@ -215,4 +222,4 @@ async def on_ready():
     await discord_client.close()
     sys.exit()
 
-discord_client.run(config.AUTH_TOKEN)
+discord_client.run(AUTH_TOKEN)
