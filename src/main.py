@@ -3,183 +3,216 @@ import datetime
 import sys
 
 import discord
+from dateutil.relativedelta import relativedelta
+from pymongo import MongoClient
+
 import config
 
-intents = discord.Intents.default()
-client = discord.Client(intents=intents)
+discord_intents = discord.Intents.default()
+discord_client = discord.Client(intents=discord_intents)
+
+mongodb_client = MongoClient("localhost", 27017)
+mongodb_db = mongodb_client["weekly-leaderboards"]
+top_memes_collection = mongodb_db["top-memes"]
+user_stats_collection = mongodb_db["user-stats"]
 
 def sort_order(item):
-    return item[1]
+    return item['reactions']
 
+async def save_leaderboard_data(number_of_days: int, channel):
+    for i in range(0, number_of_days):
+        # Read posts from last day ish 00:00-00:00
+        start_time = (datetime.datetime.now() - datetime.timedelta(days=i)) - datetime.timedelta(days=1)
+        date_entry = str(datetime.datetime.now() - datetime.timedelta(days=i))[:10].replace('-', '')
+        print(date_entry)
+        messages = [
+            message async for message in channel.history(after=start_time, limit=None)
+        ]
 
-@client.event
+        user_stats = {}
+        meme_leaderboard = {}
+        for message in messages:
+            if (
+                message.embeds == [] and message.attachments == []
+            ) or message.author == discord_client.user or message.author.bot:
+                continue
+
+            reactions = 0
+            for reaction in message.reactions:
+                reaction_users = [user async for user in reaction.users()]
+                user_posted = message.author.name
+                reaction_count = reaction.count
+                if user_posted in reaction_users:
+                    reaction_count = reaction_count - 1
+
+                reactions = reactions + reaction_count
+
+                for reaction_user in reaction_users:
+                    if reaction_user.bot:
+                        continue
+                    if reaction_user in user_stats:
+                        user_stats[reaction_user]["reactions_sent"] = user_stats[reaction_user]["reactions_sent"] + 1
+                    else:
+                        user_stats[reaction_user] = {
+                            "posts": 0,
+                            "reactions_sent": 1,
+                            "reactions_recieved": 0
+                        }
+
+            if message.author in user_stats:
+                user_stats[message.author]["posts"] = user_stats[message.author]["posts"] + 1
+                user_stats[message.author]["reactions_recieved"] = user_stats[message.author]["reactions_recieved"] + reactions
+            else:
+                user_stats[message.author] = {
+                    "posts": 1,
+                    "reactions_sent": 0,
+                    "reactions_recieved": reactions
+                }
+            meme_leaderboard[message] = reactions
+        sorted(meme_leaderboard.items(), key=lambda x:x[1])
+        formatted_meme_leaderboard = {
+            "day": date_entry,
+            "leaderboard": {}
+        }
+        for meme_message, nr_of_reactions in meme_leaderboard:
+            if meme_message.attachments != []:
+                meme = await meme_message.attachments[0].to_file()
+                meme_type = "attachment"
+            else:
+                meme = meme_message.embeds[0]
+                meme_type = "embed"
+
+            formatted_meme_leaderboard["leaderboard"][meme_message](
+                {
+                    "mention": meme_message.author.mention,
+                    "reactions": nr_of_reactions,
+                    "meme": meme,
+                    "memeType": meme_type,
+                }
+            )
+
+        top_memes_collection.insert_one(formatted_meme_leaderboard)
+        user_stats_collection.insert_one({
+            "day": date_entry,
+            "user_stats": user_stats
+        })
+
+def build_strings(meme_leaderboard, user_stats):
+
+    announcemen_string = f":trophy: Meme Leaderboard for the {sys.argv[1]} :trophy:"
+    first_place_string = f':first_place: {meme_leaderboard[0]["mention"]}: {meme_leaderboard[0]["reactions"]} reactions\n'
+    second_place_string = f':second_place: {meme_leaderboard[1]["mention"]}: {meme_leaderboard[1]["reactions"]} reactions\n'
+    third_place_string = f':third_place: {meme_leaderboard[2]["mention"]}: {meme_leaderboard[2]["reactions"]} reactions\n'
+
+    top_posters_string = f"Most memes posted this {sys.argv[1]} :rofl:\n"
+    i = 0
+    for user in sorted(user_stats, key=user_stats["posts"], reverse=True):
+        if i == 0:
+            top_posters_string = (
+                top_posters_string
+                + f":first_place: {user.mention}: {user_stats[user]}\n"
+            )
+        elif i == 1:
+            top_posters_string = (
+                top_posters_string
+                + f":second_place: {user.mention}: {user_stats[user]}\n"
+            )
+        elif i == 2:
+            top_posters_string = (
+                top_posters_string
+                + f":third_place: {user.mention}: {user_stats[user]}"
+            )
+        else:
+            break
+        i = i + 1
+
+    top_reactor_string = f"Most reactions sent this {sys.argv[1]} :rofl:\n"
+    i = 0
+    for user in sorted(user_stats, key=user_stats['reactions_sent'], reverse=True):
+        if i == 0:
+            top_reactor_string = (
+                top_reactor_string
+                + f":first_place: {user.mention}: {user_stats[user]}\n"
+            )
+        elif i == 1:
+            top_reactor_string = (
+                top_reactor_string
+                + f":second_place: {user.mention}: {user_stats[user]}\n"
+            )
+        elif i == 2:
+            top_reactor_string = (
+                top_reactor_string
+                + f":third_place: {user.mention}: {user_stats[user]}"
+            )
+        else:
+            break
+        i = i + 1
+
+        return {
+            "announcement": announcemen_string,
+            "placements": [first_place_string, second_place_string, third_place_string],
+            "top_posters": top_posters_string,
+            "top_reactions": top_reactor_string,
+        }
+
+async def send_top_meme(channel, meme_ref, meme_data, text_content):
+    if meme_data["memeType"] == "attachment":
+        await channel.send(
+            content=text_content,
+            file=meme_data["meme"],
+            reference=meme_ref,
+        )
+    else:
+        await channel.send(
+            content=text_content,
+            embed=meme_data["meme"],
+            reference=meme_ref,
+        )
+
+@discord_client.event
 async def on_ready():
-    print(f"We have logged in as {client.user}")
-    # meme_channel = client.get_channel(config.DEBUG_CHANNEL_ID) # TESTING SERVER
-    meme_channel = client.get_channel(
+    print("running")
+    channel = discord_client.get_channel(
         config.MEME_CHANNEL_ID
     )  # MEMES CHANNEL IN CRINGE GANG
-    now = datetime.datetime.now()
     if sys.argv[1] == "day":
-        start_date = now - datetime.timedelta(days=1)
+        await save_leaderboard_data(1, channel)
+        # Send message
+
+    now = datetime.datetime.now()
+    start_date = None
     if sys.argv[1] == "week":
-        start_date = now - datetime.timedelta(days=7)
+        start_date = str(now - datetime.timedelta(days=7))[:10].replace('-', '')
     elif sys.argv[1] == "month":
-        start_date = now - datetime.timedelta(weeks=4)
+        start_date = str(now - relativedelta(months=4))[:10].replace('-', '')
     elif sys.argv[1] == "year":
-        start_date = now - datetime.timedelta(days=365)
+        start_date = str(now - datetime.timedelta(days=365))[:10].replace('-', '')
+    elif sys.argv[1] == "customSave":
+        await save_leaderboard_data(sys.argv[2], channel)
 
-    messages = [
-        message async for message in meme_channel.history(after=start_date, limit=None)
-    ]
+    if start_date is None:
+        await discord_client.close()
+        sys.exit()
 
-    top_reactors = {}
-    top_posters = {}
-    meme_leaderboard = []
-    for message in messages:
-        if (
-            message.embeds == [] and message.attachments == []
-        ) or message.author == client.user:
-            continue
+    meme_leaderboards_dict = top_memes_collection.find({"day": {"$gte": start_date}})
+    meme_leaderboards = list(meme_leaderboards_dict["leaderboard"].keys())
+    user_stats = user_stats_collection.find({"day": {"$gte": start_date}})
 
-        if message.author not in top_posters:
-            top_posters[message.author] = 1
-        else:
-            top_posters[message.author] = top_posters[message.author] + 1
+    # Send message
 
-        reactions = 0
-        for reaction in message.reactions:
-            reaction_users = [user async for user in reaction.users()]
-            reaction_user_names = [user.name for user in reaction_users]
-            user_posted = message.author.name
-            reaction_count = reaction.count
-            if user_posted in reaction_user_names:
-                reaction_count = reaction_count - 1
-
-            reactions = reactions + reaction_count
-
-            for user in reaction_users:
-                if user not in top_reactors:
-                    top_reactors[user] = 1
-                else:
-                    top_reactors[user] = top_reactors[user] + 1
-
-        meme_leaderboard.append([message, reactions])
-
-    meme_leaderboard.sort(reverse=True, key=sort_order)
-
-    winners = []
-    for item in meme_leaderboard[:3]:
-        if item[0].attachments != []:
-            meme = await item[0].attachments[0].to_file()
-            meme_type = "attachment"
-        else:
-            meme = item[0].embeds[0]
-            meme_type = "embed"
-
-        winners.append(
-            {
-                "mention": item[0].author.mention,
-                "reactions": item[1],
-                "meme": meme,
-                "memeType": meme_type,
-                "reference": item[0],
-            }
-        )
-
-    announcemen_string = f":trophy: Top memes of the {sys.argv[1]} :trophy:"
-    first_place_string = f':first_place: {winners[0]["mention"]} with {winners[0]["reactions"]} reactions :clap::clap:\n'
-    second_place_string = f':second_place: {winners[1]["mention"]} with {winners[1]["reactions"]} reactions :raised_hands:\n'
-    third_place_string = f':third_place: {winners[2]["mention"]} with {winners[2]["reactions"]} reactions :+1:\n'
-
-    top_posters_string = f"Top meme posters of the {sys.argv[1]} :rofl:\n"
-    i = 0
-    for u in sorted(top_posters, key=top_posters.get, reverse=True):
-        if i == 0:
-            top_posters_string = (
-                top_posters_string
-                + f":first_place: {u.mention} with {top_posters[u]} memes posted :joy:\n"
-            )
-        elif i == 1:
-            top_posters_string = (
-                top_posters_string
-                + f":second_place: {u.mention} with {top_posters[u]} memes posted :smile:\n"
-            )
-        elif i == 2:
-            top_posters_string = (
-                top_posters_string
-                + f":third_place: {u.mention} with {top_posters[u]} memes posted :upside_down:"
-            )
-        else:
-            break
-        i = i + 1
-
-    top_reactor_string = f"Top meme enjoyers of the {sys.argv[1]} :rofl:\n"
-    i = 0
-    for u in sorted(top_reactors, key=top_reactors.get, reverse=True):
-        if i == 0:
-            top_reactor_string = (
-                top_reactor_string
-                + f":first_place: {u.mention} with {top_reactors[u]} reactions to memes :joy:\n"
-            )
-        elif i == 1:
-            top_reactor_string = (
-                top_reactor_string
-                + f":second_place: {u.mention} with {top_reactors[u]} reactions to memes :smile:\n"
-            )
-        elif i == 2:
-            top_reactor_string = (
-                top_reactor_string
-                + f":third_place: {u.mention} with {top_reactors[u]} reactions to memes :upside_down:"
-            )
-        else:
-            break
-        i = i + 1
-
-    await meme_channel.send(content=announcemen_string)
-    if winners[0]["memeType"] == "attachment":
-        await meme_channel.send(
-            content=first_place_string,
-            file=winners[0]["meme"],
-            reference=winners[0]["reference"],
-        )
+    strings = build_strings(meme_leaderboards, user_stats)
+    if sys.argv[2] == "debug":
+        print(strings)
     else:
-        await meme_channel.send(
-            content=first_place_string,
-            embed=winners[0]["meme"],
-            reference=winners[0]["reference"],
-        )
+        await channel.send(content=strings["announcement"])
+        for meme_ref, meme_data in meme_leaderboards[:3]:
+            placement = 0
+            await send_top_meme(channel, meme_ref, meme_data, strings["placements"][placement])
+            placement += 1
 
-    if winners[1]["memeType"] == "attachment":
-        await meme_channel.send(
-            content=second_place_string,
-            file=winners[1]["meme"],
-            reference=winners[1]["reference"],
-        )
-    else:
-        await meme_channel.send(
-            content=second_place_string,
-            embed=winners[1]["meme"],
-            reference=winners[1]["reference"],
-        )
-
-    if winners[2]["memeType"] == "attachment":
-        await meme_channel.send(
-            content=third_place_string,
-            file=winners[2]["meme"],
-            reference=winners[2]["reference"],
-        )
-    else:
-        await meme_channel.send(
-            content=third_place_string,
-            embed=winners[2]["meme"],
-            reference=winners[2]["reference"],
-        )
-
-    await meme_channel.send(content=top_posters_string)
-    await meme_channel.send(content=top_reactor_string)
-    await client.close()
+        await channel.send(content=strings["top_posters"])
+        await channel.send(content=strings["top_reactions"])
+    await discord_client.close()
     sys.exit()
 
-
-client.run(config.AUTH_TOKEN)
+discord_client.run(config.AUTH_TOKEN)
