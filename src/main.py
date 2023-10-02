@@ -88,7 +88,7 @@ async def save_leaderboard_data(number_of_days: int, channel):
                 meme = meme_message.embeds[0]
                 meme_type = "embed"
 
-            formatted_meme_leaderboard["leaderboard"][meme_message.id] = jsonpickle.encode({
+            formatted_meme_leaderboard["leaderboard"][str(meme_message.id)] = jsonpickle.encode({
                 "mention": meme_message.author.mention,
                 "reactions": nr_of_reactions,
                 "meme": meme,
@@ -97,10 +97,10 @@ async def save_leaderboard_data(number_of_days: int, channel):
             })
 
         top_memes_collection.insert_one(formatted_meme_leaderboard)
-        user_stats_collection.insert_one(jsonpickle.encode({
+        user_stats_collection.insert_one({
             "day": date_entry,
-            "user_stats": user_stats
-        }))
+            "user_stats": jsonpickle.encode(user_stats)
+        })
 
 def build_strings(meme_leaderboard, user_stats):
 
