@@ -7,8 +7,8 @@ import discord
 from dateutil.relativedelta import relativedelta
 from pymongo import MongoClient
 
-AUTH_TOKEN = os.environ("AUTH_TOKEN")
-CHANNEL_ID = os.environ("MEME_CHANNEL_ID")
+AUTH_TOKEN = os.environ["AUTH_TOKEN"]
+CHANNEL_ID = os.environ["MEME_CHANNEL_ID"]
 if not (AUTH_TOKEN and CHANNEL_ID):
     import config
     AUTH_TOKEN = config.AUTH_TOKEN
