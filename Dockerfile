@@ -1,15 +1,18 @@
-FROM mongo:latest
+FROM python:3.12-slim
 
-COPY . .
-COPY crontab /etc/cron.d/crontab
-# Give execution rights on the cron job
-RUN chmod 0644 /etc/cron.d/crontab
+WORKDIR /app
 
-# install Python 3 and cron
-RUN apt-get update && apt-get install -y python3 python3-pip cron
-RUN pip install -r requirements.txt
-RUN crontab /etc/cron.d/crontab
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-CMD ["cron", "-f"]
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 27017
+# Copy source code
+COPY src/ ./src/
+COPY README.md .
+
+CMD ["python", "-m", "src.main"]

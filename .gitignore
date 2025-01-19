@@ -161,6 +161,3 @@ cython_debug/
 
 # VS Code
 .vscode
-
-config.py
-docker-compose.yaml

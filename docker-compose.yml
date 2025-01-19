@@ -1,0 +1,18 @@
+services:
+  bot:
+    build: .
+    image: holger_bot:${VERSION:-latest}
+    env_file: .env
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+
+  mongodb:
+    image: mongo:latest
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+
+volumes:
+  mongodb_data:
