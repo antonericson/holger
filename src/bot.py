@@ -71,6 +71,7 @@ class HolgerBot(commands.Bot):
         self.scheduler = LeaderboardScheduler(self.channel, self.leaderboard_service)
         self.scheduler.start()
         
+        # Commands        
         self.tree.clear_commands(guild=None)
 
         @self.tree.command(description="Sync slash commands")
