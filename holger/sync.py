@@ -9,6 +9,8 @@ from holger.db import Database
 
 log = logging.getLogger(__name__)
 
+UNKNOWN_EMOJI = 10014
+
 
 async def get_text_channel(client: discord.Client, channel_id: int) -> discord.TextChannel:
     channel = client.get_channel(channel_id) or await client.fetch_channel(channel_id)
@@ -44,9 +46,16 @@ async def sync_message(db: Database, message: discord.Message) -> bool:
         # Only ask Discord who reacted when the count differs from what we have.
         if stored.get(key) == reaction.count:
             continue
-        users = [user async for user in reaction.users()]
-        if reaction.burst_count:
-            users += [user async for user in reaction.users(type=discord.ReactionType.burst)]
+        try:
+            users = [user async for user in reaction.users()]
+            if reaction.burst_count:
+                users += [user async for user in reaction.users(type=discord.ReactionType.burst)]
+        except discord.HTTPException as e:
+            if e.code != UNKNOWN_EMOJI:
+                raise
+            # Custom emoji deleted from the server: Discord still shows the count but won't list who reacted.
+            log.warning("Skipping deleted emoji %s on message %d", reaction.emoji, message.id)
+            continue
         for user in users:
             db.upsert_user(user.id, user.name, user.bot)
         db.set_reactions(message.id, key, (user.id for user in users))
