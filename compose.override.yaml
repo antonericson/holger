@@ -1,0 +1,7 @@
+# Local development only: docker compose loads this automatically and builds the image from source.
+# On Unraid the stack runs compose.yaml alone and pulls the published image.
+services:
+  collector:
+    build: .
+  reporter:
+    build: .

@@ -1,6 +1,5 @@
 x-holger: &holger
   image: ghcr.io/antonericson/holger:latest
-  build: .
   env_file: .env
   environment:
     DATA_DIR: /data
