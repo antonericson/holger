@@ -37,16 +37,36 @@ run as long as it is within its grace window (3 days for weeks, 7 for months, 14
    It only needs them in the meme channel, so you can grant them as a channel override instead of
    server-wide.
 3. Copy `.env.example` to `.env` and fill in `DISCORD_TOKEN` and `CHANNEL_ID`.
-4. `docker compose up -d`
+4. `docker compose up -d --build`. Locally, `compose.override.yaml` builds the image from source.
 5. Import the existing history once:
    `docker compose exec collector python -m holger.backfill --all`
 
 ### Unraid
 
-- Install **Compose Manager** from Community Apps and create a stack with `compose.yaml` and `.env`.
-- Point `APPDATA_DIR` at the pool path, e.g. `/mnt/nvme_cache/appdata/holger`, not `/mnt/user/...` or an SMB
-  share (SQLite locking is unreliable there). Create the folder first: if it does not exist, Docker creates it
-  in RAM-backed `/mnt` and the database is lost on reboot.
+Run it as a **Compose Manager** stack (Community Apps) whose files live on the cache pool, so the token stays
+off the flash drive and Appdata Backup covers it:
+
+```
+/mnt/nvme_cache/appdata/holger/
+├── compose.yaml   ← copied unchanged from this repo
+├── .env           ← from .env.example, without APPDATA_DIR
+└── data/          ← holger.db
+```
+
+1. `mkdir -p /mnt/nvme_cache/appdata/holger/data` and put `compose.yaml` and `.env` in
+   `/mnt/nvme_cache/appdata/holger`. Use the pool path, not `/mnt/user/...` or an SMB share: SQLite locking is
+   unreliable there.
+2. Docker tab → Compose → **Add New Stack**, then set:
+   - Compose Source: **External folder** → `/mnt/nvme_cache/appdata/holger`
+   - External ENV File Path: empty (`env_file: .env` resolves next to `compose.yaml`)
+   - Compose File Discovery: Explicit -f flags
+   - Override File Management: Automatic
+3. **Compose Up**, then run the backfill from step 5 above.
+
+Only `compose.yaml` is used on Unraid, so the stack pulls the published image instead of building.
+New releases need **Update Stack** only. Copy `compose.yaml` again only when it changes in the repo, and add any
+new variable from `.env.example` to `.env` yourself. To change a secret, edit `.env` and **Compose Up**.
+
 - Images are published to `ghcr.io/antonericson/holger` on every push to `main` (`latest`, `sha-…`)
   and on `v*` tags.
 
