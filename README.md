@@ -30,10 +30,15 @@ run as long as it is within its grace window (3 days for weeks, 7 for months, 14
 ## Setup
 
 1. In the [Discord developer portal](https://discord.com/developers/applications), enable the
-   **Message Content** intent for the bot.
-2. Copy `.env.example` to `.env` and fill in `DISCORD_TOKEN` and `CHANNEL_ID`.
-3. `docker compose up -d`
-4. Import the existing history once:
+   **Message Content** intent for the bot and turn off **Public Bot**.
+2. Invite the bot with the `bot` and `applications.commands` scopes and permissions `84992`
+   (View Channel, Read Message History, Send Messages, Embed Links):
+   `https://discord.com/oauth2/authorize?client_id=APP_ID&scope=bot+applications.commands&permissions=84992`.
+   It only needs them in the meme channel, so you can grant them as a channel override instead of
+   server-wide.
+3. Copy `.env.example` to `.env` and fill in `DISCORD_TOKEN` and `CHANNEL_ID`.
+4. `docker compose up -d`
+5. Import the existing history once:
    `docker compose exec collector python -m holger.backfill --all`
 
 ### Unraid
