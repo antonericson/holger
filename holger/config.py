@@ -13,7 +13,6 @@ class Config:
     channel_id: int
     data_dir: Path
     tz: ZoneInfo
-    healthcheck_url: str | None
     rescan_days: int
     log_level: str
 
@@ -42,7 +41,6 @@ def load_config() -> Config:
         channel_id=int(_required("CHANNEL_ID")),
         data_dir=data_dir,
         tz=ZoneInfo(os.environ.get("TZ", "UTC")),
-        healthcheck_url=os.environ.get("HEALTHCHECK_URL") or None,
         rescan_days=int(os.environ.get("RESCAN_DAYS", "7")),
         log_level=os.environ.get("LOG_LEVEL", "INFO").upper(),
     )

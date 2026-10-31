@@ -18,7 +18,6 @@ import discord
 
 from holger.config import Config, load_config, setup_logging
 from holger.db import Database
-from holger.healthcheck import ping
 from holger.leaderboard import Post, build_report
 from holger.periods import KINDS, Period, due_periods, previous_period
 from holger.sync import get_text_channel, sync_range
@@ -100,11 +99,7 @@ def main() -> None:
         asyncio.run(run(args, config))
     except Exception:
         log.exception("Report failed")
-        if not args.dry_run:
-            ping(config.healthcheck_url, fail=True)
         raise SystemExit(1) from None
-    if not args.dry_run:
-        ping(config.healthcheck_url)
 
 
 if __name__ == "__main__":

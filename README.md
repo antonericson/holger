@@ -49,8 +49,6 @@ run as long as it is within its grace window (3 days for weeks, 7 for months, 14
   in RAM-backed `/mnt` and the database is lost on reboot.
 - Images are published to `ghcr.io/antonericson/holger` on every push to `main` (`latest`, `sha-…`)
   and on `v*` tags.
-- Set `HEALTHCHECK_URL` to a [healthchecks.io](https://healthchecks.io) check with a 1 day period.
-  The reporter pings it after every run, so you are alerted if reports stop.
 
 ### Switching over from another bot
 

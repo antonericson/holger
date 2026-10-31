@@ -1,28 +1,14 @@
-"""Health signals.
+"""Docker healthcheck for the collector.
 
-`python -m holger.healthcheck` is the collector's Docker healthcheck: it fails when the
-heartbeat file has not been touched recently. `ping` reports reporter runs to healthchecks.io.
+`python -m holger.healthcheck` fails when the heartbeat file has not been touched recently.
 """
 
-import logging
 import os
 import sys
 import time
-import urllib.request
 from pathlib import Path
 
-log = logging.getLogger(__name__)
-
 MAX_HEARTBEAT_AGE = 180  # seconds
-
-
-def ping(url: str | None, fail: bool = False) -> None:
-    if not url:
-        return
-    try:
-        urllib.request.urlopen(url.rstrip("/") + ("/fail" if fail else ""), timeout=10)
-    except OSError:
-        log.warning("Healthcheck ping failed", exc_info=True)
 
 
 def main() -> None:
