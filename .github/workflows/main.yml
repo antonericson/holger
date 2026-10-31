@@ -28,6 +28,23 @@ jobs:
       - name: Test
         run: pytest
 
+  # Catches Dockerfile mistakes before merge. Never pushes, so it needs no package access.
+  build-image:
+    needs: test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+
   build-and-push-image:
     needs: test
     if: github.event_name == 'push'
