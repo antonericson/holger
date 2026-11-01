@@ -17,12 +17,17 @@ def jump_url(guild_id: int | None, channel_id: int, message_id: int) -> str:
     return f"https://discord.com/channels/{guild_id or '@me'}/{channel_id}/{message_id}"
 
 
-def show_emoji(client: discord.Client, key: str) -> str:
-    """Render a stored emoji key: unicode as is, custom emoji ids as `<:name:id>`."""
-    if not key.isdigit():
-        return key
-    emoji = client.get_emoji(int(key))
-    return str(emoji) if emoji else f"<:_:{key}>"
+def top_emoji(client: discord.Client, ranked: list[tuple[str, int]]) -> tuple[str, int] | None:
+    """The most used emoji that can still be shown: unicode, or a custom emoji still on the server.
+
+    Custom emoji are stored by id, and one that has been deleted can't be rendered.
+    """
+    for key, n in ranked:
+        if not key.isdigit():
+            return key, n
+        if emoji := client.get_emoji(int(key)):
+            return str(emoji), n
+    return None
 
 
 def register_commands(tree: app_commands.CommandTree[discord.Client], db: Database, config: Config) -> None:
@@ -37,12 +42,10 @@ def register_commands(tree: app_commands.CommandTree[discord.Client], db: Databa
             f"Reactions received: {s['received']}",
             f"Reactions given: {s['given']}",
         ]
-        if s["used_emoji"]:
-            emoji, n = s["used_emoji"]
-            lines.append(f"Certified {show_emoji(interaction.client, emoji)} enjoyer ({plural(n, 'time')})")
-        if s["received_emoji"]:
-            emoji, n = s["received_emoji"]
-            lines.append(f"Their memes mostly get {show_emoji(interaction.client, emoji)} ({plural(n, 'time')})")
+        if used := top_emoji(interaction.client, s["used_emoji"]):
+            lines.append(f"Certified {used[0]} enjoyer ({plural(used[1], 'time')})")
+        if received := top_emoji(interaction.client, s["received_emoji"]):
+            lines.append(f"Their memes mostly get {received[0]} ({plural(received[1], 'time')})")
         if s["best"]:
             message_id, score = s["best"]
             url = jump_url(interaction.guild_id, config.channel_id, message_id)

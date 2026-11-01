@@ -57,8 +57,8 @@ def test_top_reactors_and_user_stats(db: Database) -> None:
         "received": 3,
         "given": 0,
         "best": (100, 2),
-        "used_emoji": None,
-        "received_emoji": ("😂", 3),
+        "used_emoji": [],
+        "received_emoji": [("😂", 3)],
     }
 
 
@@ -70,8 +70,8 @@ def test_user_stats_top_emoji(db: Database) -> None:
     db.add_reaction(101, ALICE, "123456")
     db.add_reaction(101, CAROL, "123456")
     bob = db.user_stats(BOB)
-    assert bob["used_emoji"] == ("🔥", 2)
-    assert bob["received_emoji"] == ("123456", 2)
+    assert bob["used_emoji"] == [("🔥", 2), ("😂", 1)]
+    assert bob["received_emoji"] == [("123456", 2)]
 
 
 def test_remove_and_clear_reactions(db: Database) -> None:
