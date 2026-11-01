@@ -14,6 +14,8 @@ class UserStats(TypedDict):
     received: int
     given: int
     best: tuple[int, int] | None  # (message_id, reactions)
+    used_emoji: tuple[str, int] | None  # (emoji, reactions given with it)
+    received_emoji: tuple[str, int] | None  # (emoji, reactions received with it)
 
 
 SCHEMA = """
@@ -194,4 +196,21 @@ class Database:
             " GROUP BY message_id ORDER BY score DESC, MIN(created_at) LIMIT 1",
             (user_id,),
         ).fetchone()
-        return {"posted": posted, "received": received, "given": given, "best": best}
+        used_emoji = self.conn.execute(
+            "SELECT emoji, COUNT(*) AS n FROM valid_reactions WHERE user_id = ?"
+            " GROUP BY emoji ORDER BY n DESC, MIN(created_at) LIMIT 1",
+            (user_id,),
+        ).fetchone()
+        received_emoji = self.conn.execute(
+            "SELECT emoji, COUNT(*) AS n FROM valid_reactions WHERE author_id = ?"
+            " GROUP BY emoji ORDER BY n DESC, MIN(created_at) LIMIT 1",
+            (user_id,),
+        ).fetchone()
+        return {
+            "posted": posted,
+            "received": received,
+            "given": given,
+            "best": best,
+            "used_emoji": used_emoji,
+            "received_emoji": received_emoji,
+        }

@@ -52,7 +52,26 @@ def test_top_reactors_and_user_stats(db: Database) -> None:
     db.set_reactions(102, "😂", [BOB])
     db.add_reaction(101, BOB, "😂")  # own meme, not counted
     assert db.top_reactors(*ALL_TIME) == [(BOB, 2), (CAROL, 1)]
-    assert db.user_stats(ALICE) == {"posted": 2, "received": 3, "given": 0, "best": (100, 2)}
+    assert db.user_stats(ALICE) == {
+        "posted": 2,
+        "received": 3,
+        "given": 0,
+        "best": (100, 2),
+        "used_emoji": None,
+        "received_emoji": ("😂", 3),
+    }
+
+
+def test_user_stats_top_emoji(db: Database) -> None:
+    db.set_reactions(100, "😂", [BOB, CAROL])
+    db.add_reaction(100, BOB, "🔥")
+    db.add_reaction(102, BOB, "🔥")
+    db.add_reaction(101, BOB, "123456")  # own meme, not counted
+    db.add_reaction(101, ALICE, "123456")
+    db.add_reaction(101, CAROL, "123456")
+    bob = db.user_stats(BOB)
+    assert bob["used_emoji"] == ("🔥", 2)
+    assert bob["received_emoji"] == ("123456", 2)
 
 
 def test_remove_and_clear_reactions(db: Database) -> None:
