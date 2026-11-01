@@ -33,7 +33,9 @@ def register_commands(tree: app_commands.CommandTree[discord.Client], db: Databa
         s = db.user_stats(target.id)
         lines = [
             f"**Meme stats for {target.mention}** (all time)",
-            f"Memes posted: {s['posted']} · Reactions received: {s['received']} · Reactions given: {s['given']}",
+            f"Memes posted: {s['posted']}",
+            f"Reactions received: {s['received']}",
+            f"Reactions given: {s['given']}",
         ]
         if s["used_emoji"]:
             emoji, n = s["used_emoji"]
