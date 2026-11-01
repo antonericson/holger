@@ -5,8 +5,6 @@ from dataclasses import dataclass
 from holger.periods import Period
 
 MEDALS = (":first_place:", ":second_place:", ":third_place:")
-MEME_CHEERS = (":clap::clap:", ":raised_hands:", ":+1:")
-USER_CHEERS = (":joy:", ":smile:", ":upside_down:")
 
 
 @dataclass(frozen=True)
@@ -50,20 +48,20 @@ def build_report(
     for place, message_id, score in rank([(m, s) for m, _, s in memes]):
         posts.append(
             Post(
-                f"{MEDALS[place]} <@{authors[message_id]}> with {plural(score, 'reaction')} {MEME_CHEERS[place]}",
+                f"{MEDALS[place]} <@{authors[message_id]}>: {plural(score, 'reaction')} {MEDALS[place]}",
                 meme_id=message_id,
             )
         )
 
-    lines = [f"Top meme posters of {period.title} :rofl:"]
+    lines = [f"Top meme posters of {period.title} :medal:"]
     for place, user_id, posted in rank(posters):
-        lines.append(f"{MEDALS[place]} <@{user_id}> with {plural(posted, 'meme')} posted {USER_CHEERS[place]}")
+        lines.append(f"{MEDALS[place]} <@{user_id}>: {plural(posted, 'meme')} {MEDALS[place]}")
     posts.append(Post("\n".join(lines)))
 
     if reactors:
-        lines = [f"Top meme enjoyers of {period.title} :rofl:"]
+        lines = [f"Top meme enjoyers of {period.title} :performing_arts:"]
         for place, user_id, given in rank(reactors):
-            lines.append(f"{MEDALS[place]} <@{user_id}> with {plural(given, 'reaction')} to memes {USER_CHEERS[place]}")
+            lines.append(f"{MEDALS[place]} <@{user_id}>: {plural(given, 'reaction')} {MEDALS[place]}")
         posts.append(Post("\n".join(lines)))
 
     return posts
