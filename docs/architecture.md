@@ -22,7 +22,8 @@ One Docker image runs as two containers in one compose stack. Both mount the sam
 - Records memes, reactions, edits and deletes into SQLite, keyed on Discord IDs.
 - On every start or full reconnect, syncs from the last seen message (or the last `RESCAN_DAYS`,
   whichever is earlier), so downtime loses nothing.
-- Serves `/stats [user]` and `/leaderboard [week|month|year|all]`. Responses never ping anyone.
+- Serves `/stats [user]` (posts, reactions, best meme, most used and received emoji) and
+  `/leaderboard [week|month|year|all]`. Responses never ping anyone.
 - Touches a heartbeat file every minute for the Docker healthcheck.
 
 **Reporter** (one-shot, run by supercronic)
